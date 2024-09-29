@@ -1,0 +1,103 @@
+-- Variables
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local camera = game.Workspace.CurrentCamera
+local espEnabled = false -- ESP starts off
+local highlightObjects = {}
+
+-- Function to create a rainbow effect
+local function getRainbowColor(t)
+    local r = math.sin(t) * 0.5 + 0.5
+    local g = math.sin(t + 2 * math.pi / 3) * 0.5 + 0.5
+    local b = math.sin(t + 4 * math.pi / 3) * 0.5 + 0.5
+    return Color3.new(r, g, b)
+end
+
+-- Function to create or update the highlight object (ESP)
+local function highlightPlayer(targetPlayer)
+    if not highlightObjects[targetPlayer.Name] then
+        local highlight = Instance.new("Highlight")
+        highlight.Adornee = targetPlayer.Character
+        highlight.FillTransparency = 0.5 -- Semi-transparent glow
+        highlight.OutlineTransparency = 0 -- Visible outline
+        highlightObjects[targetPlayer.Name] = highlight
+        highlight.Parent = targetPlayer.Character
+    end
+end
+
+-- Function to update ESP colors (rainbow glow effect)
+local function updateESPColors()
+    local t = tick()
+    for _, highlight in pairs(highlightObjects) do
+        if highlight and highlight.Parent then
+            highlight.FillColor = getRainbowColor(t)
+            highlight.OutlineColor = getRainbowColor(t + 0.5)
+        end
+    end
+end
+
+-- Function to aim at a specific player's head
+local function aimAtPlayerHead(targetPlayer)
+    if targetPlayer.Character and targetPlayer.Character:FindFirstChild("Head") then
+        local targetHead = targetPlayer.Character.Head
+        camera.CFrame = CFrame.new(camera.CFrame.Position, targetHead.Position)
+    end
+end
+
+-- Toggle ESP on/off with "E"
+game:GetService("UserInputService").InputBegan:Connect(function(input, gameProcessedEvent)
+    if not gameProcessedEvent then
+        if input.KeyCode == Enum.KeyCode.E then
+            espEnabled = not espEnabled
+            if espEnabled then
+                -- Highlight all players for ESP
+                local players = game.Players:GetPlayers()
+                for _, targetPlayer in pairs(players) do
+                    if targetPlayer ~= player and targetPlayer.Character then
+                        highlightPlayer(targetPlayer)
+                    end
+                end
+            else
+                -- Clear highlights
+                for _, highlight in pairs(highlightObjects) do
+                    if highlight then
+                        highlight:Destroy()
+                    end
+                end
+                highlightObjects = {}
+            end
+        end
+    end
+end)
+
+-- Detect holding right-click for aimbot
+local aimbotEnabled = false
+local targetPlayerToAim = nil
+
+game:GetService("UserInputService").InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton2 then
+        aimbotEnabled = true -- Enable aimbot (tracking)
+    end
+end)
+
+game:GetService("UserInputService").InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton2 then
+        aimbotEnabled = false -- Disable aimbot (tracking stops)
+    end
+end)
+
+-- Update ESP and aimbot every frame
+game:GetService("RunService").RenderStepped:Connect(function()
+    -- Update ESP colors
+    if espEnabled then
+        updateESPColors()
+    end
+
+    -- Aim at the specified player's head
+    if aimbotEnabled and targetPlayerToAim then
+        aimAtPlayerHead(targetPlayerToAim) -- Aim at the specified target player
+    end
+end)
+
+-- Set the target player you want to aim at (for example, you can change this manually)
+targetPlayerToAim = game.Players:FindFirstChild("PlayerName") -- Replace "PlayerName" with the actual player's name you want to aim at
